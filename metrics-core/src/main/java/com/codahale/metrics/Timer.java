@@ -17,7 +17,13 @@ public class Timer implements Metered, Sampling {
     private Random random;
 
     public interface Context extends Closeable {
+        /**
+         * Stops recording the elapsed time, updates the timer and returns the elapsed time in
+         * nanoseconds.
+         */
         long stop();
+
+        @Override
         void close();
     }
     /**
@@ -36,10 +42,7 @@ public class Timer implements Metered, Sampling {
             this.startTime = clock.getTick();
         }
 
-        /**
-         * Stops recording the elapsed time, updates the timer and returns the elapsed time in
-         * nanoseconds.
-         */
+        @Override
         public long stop() {
             final long elapsed = clock.getTick() - startTime;
             timer.update(elapsed, TimeUnit.NANOSECONDS);
@@ -63,7 +66,7 @@ public class Timer implements Metered, Sampling {
       }
 
       public long stop() {
-        return 0;
+          return 0;
       }
 
       @Override
@@ -82,7 +85,7 @@ public class Timer implements Metered, Sampling {
      * {@link Clock}.
      */
     public Timer() {
-      this(new ExponentiallyDecayingReservoir());
+        this(new ExponentiallyDecayingReservoir());
     }
 
     /**
@@ -95,7 +98,7 @@ public class Timer implements Metered, Sampling {
     }
 
     public Timer(Reservoir reservoir, Clock clock) {
-      this(reservoir, clock, 1.0);
+        this(reservoir, clock, 1.0);
     }
 
   /**
@@ -161,7 +164,7 @@ public class Timer implements Metered, Sampling {
 
     @Override
     public long getCount() {
-        return (long) (histogram.getCount()/samplingRate);
+        return (long) (histogram.getCount() / samplingRate);
     }
 
     @Override
