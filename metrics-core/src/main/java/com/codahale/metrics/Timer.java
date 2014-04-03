@@ -1,6 +1,7 @@
 package com.codahale.metrics;
 
 import java.io.Closeable;
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -9,17 +10,27 @@ import java.util.concurrent.TimeUnit;
  * throughput statistics via {@link Meter}.
  */
 public class Timer implements Metered, Sampling {
+
+    private static NoOpContext noOpContext = new NoOpContext();
+
+    private boolean sampling;
+    private Random random;
+
+    public interface Context extends Closeable {
+        long stop();
+        void close();
+    }
     /**
      * A timing context.
      *
      * @see Timer#time()
      */
-    public static class Context implements Closeable {
+    public static class SimpleContext implements Context {
         private final Timer timer;
         private final Clock clock;
         private final long startTime;
 
-        private Context(Timer timer, Clock clock) {
+        private SimpleContext(Timer timer, Clock clock) {
             this.timer = timer;
             this.clock = clock;
             this.startTime = clock.getTick();
@@ -41,16 +52,37 @@ public class Timer implements Metered, Sampling {
         }
     }
 
+    /**
+     * A timing context.
+     *
+     * @see Timer#time()
+     */
+    public static class NoOpContext implements Context {
+
+      private NoOpContext() {
+      }
+
+      public long stop() {
+        return 0;
+      }
+
+      @Override
+      public void close() {
+      }
+    }
+
+
     private final Meter meter;
     private final Histogram histogram;
     private final Clock clock;
+    private final double samplingRate;
 
     /**
      * Creates a new {@link Timer} using an {@link ExponentiallyDecayingReservoir} and the default
      * {@link Clock}.
      */
     public Timer() {
-        this(new ExponentiallyDecayingReservoir());
+      this(new ExponentiallyDecayingReservoir());
     }
 
     /**
@@ -62,17 +94,28 @@ public class Timer implements Metered, Sampling {
         this(reservoir, Clock.defaultClock());
     }
 
-    /**
+    public Timer(Reservoir reservoir, Clock clock) {
+      this(new ExponentiallyDecayingReservoir(), clock, 1.0);
+    }
+
+  /**
      * Creates a new {@link Timer} that uses the given {@link Reservoir} and {@link Clock}.
      *
      * @param reservoir the {@link Reservoir} implementation the timer should use
      * @param clock  the {@link Clock} implementation the timer should use
      */
-    public Timer(Reservoir reservoir, Clock clock) {
+    public Timer(Reservoir reservoir, Clock clock, double samplingRate) {
         this.meter = new Meter(clock);
         this.clock = clock;
+        this.samplingRate = samplingRate;
         this.histogram = new Histogram(reservoir);
+        if (samplingRate < 1.0) {
+            random = new Random();
+            sampling = true;
+        }
     }
+
+
 
     /**
      * Adds a recorded duration.
@@ -109,12 +152,16 @@ public class Timer implements Metered, Sampling {
      * @see Context
      */
     public Context time() {
-        return new Context(this, clock);
+        if (sampling && random.nextDouble() <= samplingRate) {
+            return noOpContext;
+        } else {
+            return new SimpleContext(this, clock);
+        }
     }
 
     @Override
     public long getCount() {
-        return histogram.getCount();
+        return (long) (histogram.getCount()/samplingRate);
     }
 
     @Override
