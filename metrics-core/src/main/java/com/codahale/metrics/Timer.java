@@ -95,7 +95,7 @@ public class Timer implements Metered, Sampling {
     }
 
     public Timer(Reservoir reservoir, Clock clock) {
-      this(new ExponentiallyDecayingReservoir(), clock, 1.0);
+      this(reservoir, clock, 1.0);
     }
 
   /**
