@@ -32,4 +32,9 @@ public @interface Timed {
      * relative to the annotated class.
      */
     boolean absolute() default false;
+
+    /**
+     * The sampling rate this timer will use, defaults to 1.0, which means no sampling.
+     */
+    double samplingRate() default 1.0;
 }
