@@ -11,10 +11,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class Timer implements Metered, Sampling {
 
-    private static NoOpContext noOpContext = new NoOpContext();
-
     private boolean sampling;
     private Random random;
+    private NoOpContext noOpContext;
 
     public interface Context extends Closeable {
         /**
@@ -56,7 +55,7 @@ public class Timer implements Metered, Sampling {
     }
 
     /**
-     * A timing context.
+     * A thread-safe No-Op timing context.
      *
      * @see Timer#time()
      */
@@ -112,10 +111,18 @@ public class Timer implements Metered, Sampling {
         this.clock = clock;
         this.samplingRate = samplingRate;
         this.histogram = new Histogram(reservoir);
-        if (samplingRate < 1.0) {
-            random = new Random();
-            sampling = true;
+        if (samplingRate <= 0.0 || samplingRate > 1.0) {
+            throw new IllegalArgumentException("Sampling rate needs to be bigger than 0.0 and smaller or equal to 1.0");
         }
+        if (samplingRate < 1.0) {
+            initSampling();
+        }
+    }
+
+    private void initSampling() {
+        sampling = true;
+        random = new Random();
+        noOpContext = new NoOpContext();
     }
 
 
